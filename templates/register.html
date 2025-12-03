@@ -1,18 +1,43 @@
 {% extends "base.html" %}
 {% block title %}Register — Face Auth{% endblock %}
+
 {% block content %}
 <h2>Register</h2>
+
 <form id="regForm" class="row" onsubmit="return false;">
   <input id="username" class="input" placeholder="Enter username" />
   <input id="num" class="input" type="number" min="5" max="25" value="10" />
   <button class="btn" onclick="startCapture()">Start Capture</button>
 </form>
 
-<div class="video-wrap">
-  <img id="stream" src="{{ url_for('video_feed') }}" alt="video stream"/>
+<div class="card">
+  <div class="video-wrap">
+    <!-- Browser webcam preview -->
+    <video id="regVideo" autoplay playsinline muted
+           style="width:100%; max-width:720px; border-radius:8px; border:1px solid #444; background:#000;">
+    </video>
+
+    <!-- Hidden canvas for frame extraction -->
+    <canvas id="regCanvas" width="640" height="480" style="display:none;"></canvas>
+  </div>
+
+  <p id="status" class="muted">
+    Captured: <span id="count">0</span>
+  </p>
+
+  <button class="btn" onclick="trainModel()">Train Model</button>
+  <p id="trainMsg" class="muted"></p>
 </div>
 
-<p id="status" class="muted">Captured: <span id="count">0</span></p>
-<button class="btn" onclick="trainModel()">Train Model</button>
-<p id="trainMsg" class="muted"></p>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    // This will be defined in main.js
+    if (window.initRegisterCamera) {
+      window.initRegisterCamera("regVideo");
+    } else {
+      console.warn("initRegisterCamera() is not defined yet. Ensure main.js is loaded.");
+    }
+  });
+</script>
+
 {% endblock %}

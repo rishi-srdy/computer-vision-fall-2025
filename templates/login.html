@@ -1,10 +1,39 @@
 {% extends "base.html" %}
 {% block title %}Login — Face Auth{% endblock %}
+
 {% block content %}
 <h2>Login (Face)</h2>
-<div class="video-wrap">
-  <img id="stream" src="{{ url_for('video_feed') }}" alt="video stream"/>
+
+<div class="card">
+  <div class="video-wrap">
+    <!-- Browser webcam preview -->
+    <video id="loginVideo" autoplay playsinline muted
+           style="width:100%; max-width:720px; border-radius:8px; border:1px solid #444; background:#000;">
+    </video>
+
+    <!-- Hidden canvas to grab a single frame for /api/auth -->
+    <canvas id="loginCanvas" width="640" height="480" style="display:none;"></canvas>
+  </div>
+
+  <div class="row">
+    <button class="btn" id="loginAuthBtn" onclick="authenticate()">
+      Authenticate
+    </button>
+  </div>
+
+  <p id="authMsg" class="muted">
+    Position your face inside the frame and click “Authenticate”.
+  </p>
 </div>
-<button class="btn" onclick="authenticate()">Authenticate</button>
-<p id="authMsg" class="muted"></p>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    // This will be defined in main.js
+    if (window.initLoginCamera) {
+      window.initLoginCamera("loginVideo");
+    } else {
+      console.warn("initLoginCamera() is not defined yet. Make sure main.js is loaded.");
+    }
+  });
+</script>
 {% endblock %}

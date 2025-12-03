@@ -310,6 +310,7 @@ def video_feed():
     )
 
 
+
 # ============================
 # Face Registration APIs
 # ============================
@@ -319,18 +320,39 @@ def api_capture():
     """
     Capture one cropped face image for a given username.
 
+    New behaviour:
+      – Prefer an uploaded frame from the browser (field: 'frame').
+      – Fallback to server webcam via get_camera() (for local use).
+
     Expects form-data:
       - username
+      - frame (optional file; JPEG/PNG)
     Saves to: data/faces/<username>/img_XXXX.jpg
     """
     username = (request.form.get("username") or "").strip()
     if not username:
         return jsonify(ok=False, msg="username required"), 400
 
-    cam = get_camera()
-    ok, frame = cam.read()
-    if not ok:
-        return jsonify(ok=False, msg="camera read failed"), 500
+    frame = None
+
+    # 1) Try uploaded file from browser
+    up = request.files.get("frame")
+    if up and up.filename:
+        data = up.read()
+        arr = np.frombuffer(data, np.uint8)
+        frame = cv.imdecode(arr, cv.IMREAD_COLOR)
+        if frame is None:
+            return jsonify(ok=False, msg="could not decode uploaded image"), 400
+
+    # 2) Fallback: direct webcam (local dev only)
+    if frame is None:
+        try:
+            cam = get_camera()
+            ok, frame = cam.read()
+        except Exception:
+            ok, frame = False, None
+        if not ok or frame is None:
+            return jsonify(ok=False, msg="camera not available"), 500
 
     roi, _, _ = prepare_face_roi(frame)
     if roi is None:
@@ -399,8 +421,15 @@ def api_train():
 @app.post("/api/auth")
 def api_auth():
     """
-    Take one webcam frame, run LBPH prediction.
-    On success: set session['user'] and return redirect=/dashboard.
+    Authenticate user using a single face frame.
+
+    New behaviour:
+      – Prefer an uploaded frame from the browser (field: 'frame').
+      – Fallback to server webcam via get_camera() for local runs.
+
+    On success:
+      – sets session['user']
+      – returns JSON with redirect=/dashboard
     """
     model = ensure_model_trained()
     if model is None:
@@ -409,10 +438,26 @@ def api_auth():
     labels = load_labels()
     inv_labels = {v: k for k, v in labels.items()}
 
-    cam = get_camera()
-    ok, frame = cam.read()
-    if not ok:
-        return jsonify(ok=False, msg="camera read failed"), 500
+    frame = None
+
+    # 1) Try uploaded file
+    up = request.files.get("frame")
+    if up and up.filename:
+        data = up.read()
+        arr = np.frombuffer(data, np.uint8)
+        frame = cv.imdecode(arr, cv.IMREAD_COLOR)
+        if frame is None:
+            return jsonify(ok=False, msg="could not decode uploaded image"), 400
+
+    # 2) Fallback: webcam
+    if frame is None:
+        try:
+            cam = get_camera()
+            ok, frame = cam.read()
+        except Exception:
+            ok, frame = False, None
+        if not ok or frame is None:
+            return jsonify(ok=False, msg="camera not available"), 500
 
     roi, _, _ = prepare_face_roi(frame)
     if roi is None:
@@ -2566,9 +2611,4 @@ def module7_task3_video_feed():
 # Run
 # ----------------------------
 if __name__ == "__main__":
-    # For local dev
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", "5000")),
-        debug=True,
-    )
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=True)
