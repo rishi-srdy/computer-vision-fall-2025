@@ -525,19 +525,46 @@ def m1_toggle():
 @login_required
 def m1_capture():
     """
-    ?mode=calib | img
-    Saves the current frame to:
+    Capture a frame for Module 1.
+
+    Query param:
+      ?mode=calib | img
+
+    New behaviour:
+      – Prefer an uploaded frame from the browser (field: 'frame').
+      – Fallback to server webcam via get_camera() (for local dev).
+
+    Saves:
       - calib/   → chessboard captures
       - captures → object images
+
+    Returns JSON:
+      { ok: bool, path: "relative/path/from/BASE_DIR" }
     """
     mode = (request.args.get("mode") or "").lower()
     if mode not in ("calib", "img"):
-        return jsonify(ok=False, error="invalid mode"), 400
+        return jsonify(ok=False, error="invalid mode (use calib|img)"), 400
 
-    cam = get_camera()
-    ok, frame = cam.read()
-    if not ok:
-        return jsonify(ok=False, error="camera read failed"), 500
+    frame = None
+
+    # 1) Try uploaded file from browser
+    up = request.files.get("frame")
+    if up and up.filename:
+        data = up.read()
+        arr = np.frombuffer(data, np.uint8)
+        frame = cv.imdecode(arr, cv.IMREAD_COLOR)
+        if frame is None:
+            return jsonify(ok=False, error="could not decode uploaded image"), 400
+
+    # 2) Fallback: direct webcam (local dev only)
+    if frame is None:
+        try:
+            cam = get_camera()
+            ok, frame = cam.read()
+        except Exception:
+            ok, frame = False, None
+        if not ok or frame is None:
+            return jsonify(ok=False, error="camera read failed"), 500
 
     ts = int(time.time() * 1000)
     out_path = (
