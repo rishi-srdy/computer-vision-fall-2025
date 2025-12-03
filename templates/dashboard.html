@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+<h2 style="margin-bottom: 10px;">Welcome, {{ user }}</h2>
+<p class="muted">Select a module to continue</p>
+
+<!-- Demo Videos Section -->
+<section class="demo-section">
+  <h3>🎥 Module Demonstration Videos</h3>
+  <p class="muted">Recorded walkthroughs of each module. Click a video to play, or jump directly into the module.</p>
+
+  <div class="video-grid">
+    <!-- Module 1 video -->
+    <div class="video-card">
+      <h4>Module 1 – Face Login & Calibration</h4>
+      <video controls preload="metadata">
+        <source src="{{ url_for('static', filename='videos/module1_demo.mp4') }}" type="video/mp4">
+        Your browser does not support HTML5 video.
+      </video>
+      <p>Face-based login and perspective measurement using calibrated camera.</p>
+      <a href="{{ url_for('module_n', n=1) }}" class="btn btn-small">Open Module 1</a>
+    </div>
+
+    <!-- Module 2 video -->
+    <div class="video-card">
+      <h4>Module 2 – Detect → Blur → Deblur</h4>
+      <video controls preload="metadata">
+        <source src="{{ url_for('static', filename='videos/module2_demo.mp4') }}" type="video/mp4">
+      </video>
+      <p>Template matching, controlled blurring, and Wiener deblurring pipeline.</p>
+      <a href="{{ url_for('module_n', n=2) }}" class="btn btn-small">Open Module 2</a>
+    </div>
+
+    <!-- Module 3 video -->
+    <div class="video-card">
+      <h4>Module 3 – Edges, Corners & ArUco</h4>
+      <video controls preload="metadata">
+        <source src="{{ url_for('static', filename='videos/module3_demo.mp4') }}" type="video/mp4">
+      </video>
+      <p>Gradient/LoG maps, edge & corner detection, and ArUco-based segmentation.</p>
+      <a href="{{ url_for('module3_dashboard') }}" class="btn btn-small">Open Module 3</a>
+    </div>
+
+    <!-- Module 4 video -->
+    <div class="video-card">
+      <h4>Module 4 – Panorama & SIFT-lite</h4>
+      <video controls preload="metadata">
+        <source src="{{ url_for('static', filename='videos/module4_demo.mp4') }}" type="video/mp4">
+      </video>
+      <p>Image stitching plus custom SIFT-like features vs OpenCV SIFT.</p>
+      <a href="{{ url_for('module_n', n=4) }}" class="btn btn-small">Open Module 4</a>
+    </div>
+
+    <!-- Module 5 video -->
+    <div class="video-card">
+      <h4>Module 5 – PDF Viewer</h4>
+      <video controls preload="metadata">
+        <source src="{{ url_for('static', filename='videos/module5_demo.mp4') }}" type="video/mp4">
+      </video>
+      <p>In-browser viewer for the project PDF documents.</p>
+      <a href="{{ url_for('module_n', n=5) }}" class="btn btn-small">Open Module 5</a>
+    </div>
+
+    <!-- Module 6 video -->
+    <div class="video-card">
+      <h4>Module 6 – Real-time Trackers</h4>
+      <video controls preload="metadata">
+        <source src="{{ url_for('static', filename='videos/module6_demo.mp4') }}" type="video/mp4">
+      </video>
+      <p>Marker-based, markerless, and SAM2 mask-based object tracking.</p>
+      <a href="{{ url_for('module_n', n=6) }}" class="btn btn-small">Open Module 6</a>
+    </div>
+
+    <!-- Module 7 video -->
+    <div class="video-card">
+      <h4>Module 7 – Stereo Size + Pose & Hands</h4>
+      <video controls preload="metadata">
+        <source src="{{ url_for('static', filename='videos/module7_demo.mp4') }}" type="video/mp4">
+      </video>
+      <p>Stereo size estimation and real-time pose/hand tracking with CSV logging.</p>
+      <a href="{{ url_for('module_n', n=7) }}" class="btn btn-small">Open Module 7</a>
+    </div>
+  </div>
+</section>
+
+<div class="modules-wrap">
+  <div class="modules-grid-2x2">
+    <!-- Module 1 -->
+    <a href="{{ url_for('module_n', n=1) }}" class="module-card">
+      <div class="module-icon" aria-hidden="true">
+        <!-- Camera/Face icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M3 7h4l2-2h6l2 2h4v12H3z" stroke-width="1.5"/>
+          <circle cx="12" cy="13" r="4" stroke-width="1.5"/>
+          <path d="M8 13a4 4 0 0 1 8 0" stroke-width="1.5" opacity=".6"/>
+        </svg>
+      </div>
+      <div class="module-number">Module 1</div>
+      <div class="module-desc">Click to open</div>
+    </a>
+
+    <!-- Module 2 -->
+    <a href="{{ url_for('module_n', n=2) }}" class="module-card">
+      <div class="module-icon" aria-hidden="true">
+        <!-- Grid/Tools icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="1.5"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="module-number">Module 2</div>
+      <div class="module-desc">Click to open</div>
+    </a>
+
+    <!-- Module 3 -->
+    <a href="{{ url_for('module3_dashboard') }}" class="module-card">
+      <div class="module-icon" aria-hidden="true">
+        <!-- Chip/Compute icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <rect x="6" y="6" width="12" height="12" rx="2" stroke-width="1.5"/>
+          <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="module-number">Module 3</div>
+      <div class="module-desc">Click to open</div>
+    </a>
+
+    <!-- Module 4 -->
+    <a href="{{ url_for('module_n', n=4) }}" class="module-card">
+      <div class="module-icon" aria-hidden="true">
+        <!-- Spark/Analytics icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M4 20v-7l4 4 5-7 7 10" stroke-width="1.5" />
+          <path d="M3 3h5v5H3z" stroke-width="1.5" />
+        </svg>
+      </div>
+      <div class="module-number">Module 4</div>
+      <div class="module-desc">Click to open</div>
+    </a>
+
+    <!-- Module 5 -->
+    <a href="{{ url_for('module_n', n=5) }}" class="module-card">
+      <div class="module-icon" aria-hidden="true">
+        <!-- Stack icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M4 9l8-4 8 4-8 4-8-4z" stroke-width="1.5"/>
+          <path d="M4 15l8 4 8-4" stroke-width="1.5" opacity=".7"/>
+        </svg>
+      </div>
+      <div class="module-number">Module 5</div>
+      <div class="module-desc">Click to open</div>
+    </a>
+
+    <!-- Module 6 -->
+    <a href="{{ url_for('module_n', n=6) }}" class="module-card">
+      <div class="module-icon" aria-hidden="true">
+        <!-- Layers icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M4 12l8-4 8 4-8 4-8-4z" stroke-width="1.5"/>
+          <path d="M6 16l6 3 6-3" stroke-width="1.5" opacity=".7"/>
+        </svg>
+      </div>
+      <div class="module-number">Module 6</div>
+      <div class="module-desc">Click to open</div>
+    </a>
+
+    <!-- Module 7 -->
+    <a href="{{ url_for('module_n', n=7) }}" class="module-card">
+      <div class="module-icon" aria-hidden="true">
+        <!-- Star/spark icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M12 3l2.5 5.2L20 9l-4 3.9L17 19l-5-2.6L7 19l1-6.1L4 9l5.5-.8L12 3z" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="module-number">Module 7</div>
+      <div class="module-desc">Click to open</div>
+    </a>
+  </div>
+</div>
+
+<div style="margin-top:20px; text-align:center;">
+  <a href="{{ url_for('logout') }}" class="btn">Logout</a>
+</div>
+
+{% endblock %}

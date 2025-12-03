@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Login — Face Auth{% endblock %}
+{% block content %}
+<h2>Login (Face)</h2>
+<div class="video-wrap">
+  <img id="stream" src="{{ url_for('video_feed') }}" alt="video stream"/>
+</div>
+<button class="btn" onclick="authenticate()">Authenticate</button>
+<p id="authMsg" class="muted"></p>
+{% endblock %}
