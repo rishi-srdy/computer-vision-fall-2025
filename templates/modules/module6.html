@@ -17,31 +17,37 @@
   </p>
 
   <div class="card">
+    <!-- Mode buttons -->
     <div class="m6-controls">
       <button class="btn" data-mode="marker">Marker-based</button>
       <button class="btn ghost" data-mode="markerless">Markerless</button>
       <button class="btn ghost" data-mode="sam2">SAM2 segmentation</button>
     </div>
 
+    <p id="m6Status" class="muted" style="margin-top: 8px;">
+      Select a mode to begin. Marker / Markerless will use your browser webcam.
+    </p>
+
     <div class="m6-video-box">
-      <!-- Live webcam (marker + markerless) -->
-      <img
-        id="m6_webcam"
-        class="m6-video"
-        src="{{ url_for('module6_video_feed') }}"
-        alt="Tracking stream (webcam)"
-      >
+      <!-- Hidden input video (still used by JS) -->
+    <video id="m6Video"
+          autoplay
+          playsinline
+          muted
+          style="visibility:hidden; width:0; height:0; position:absolute;">
+    </video>
 
-      <!-- SAM2 segmented frames (static fetch) -->
-      <img
-        id="m6_sam2"
-        class="m6-video"
-        src="{{ url_for('module6_sam2_frame', frame_id=0) }}"
-        alt="SAM2 frame"
-        style="display:none;"
-      >
+      <!-- Hidden capture canvas -->
+      <canvas id="m6Canvas" width="640" height="480" style="display:none;"></canvas>
 
-      <div id="m6_sam2_controls" class="m6-sam2-controls" style="display:none;">
+      <!-- Visible processed output -->
+      <img id="m6Output"
+          class="m6-video"
+          src=""
+          alt="Tracking output">
+
+      <!-- SAM2 playback controls -->
+      <div id="m6_sam2_controls" class="m6-sam2-controls" style="display:none; margin-top: 10px;">
         <button class="btn ghost" data-action="prev">⏪ Prev</button>
         <button class="btn ghost" data-action="play">▶️ Play</button>
         <button class="btn ghost" data-action="next">⏩ Next</button>

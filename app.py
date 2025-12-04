@@ -2183,58 +2183,58 @@ MODULE6_FRAME_ID = 0
 MODULE6_TOTAL_FRAMES = MODULE6_SAM2_MASKS.shape[0]  # e.g. 199
 
 
-def module6_gen_frames():
-    """
-    Streaming generator for /module/6/video_feed
-    Uses the main webcam (get_camera) for marker/markerless,
-    and the pre-recorded video + SAM2 masks for 'sam2' mode.
-    """
-    global MODULE6_MODE, MODULE6_FRAME_ID, MODULE6_MARKERLESS
+# def module6_gen_frames():
+#     """
+#     Streaming generator for /module/6/video_feed
+#     Uses the main webcam (get_camera) for marker/markerless,
+#     and the pre-recorded video + SAM2 masks for 'sam2' mode.
+#     """
+#     global MODULE6_MODE, MODULE6_FRAME_ID, MODULE6_MARKERLESS
 
-    while True:
-        with MODULE6_MODE_LOCK:
-            mode = MODULE6_MODE
+#     while True:
+#         with MODULE6_MODE_LOCK:
+#             mode = MODULE6_MODE
 
-        # --- Choose source ---
-        if mode in ("marker", "markerless"):
-            cam = get_camera()
-            ret, frame = cam.read()
+#         # --- Choose source ---
+#         if mode in ("marker", "markerless"):
+#             cam = get_camera()
+#             ret, frame = cam.read()
 
-        elif mode == "sam2":
-            ret, frame = MODULE6_VIDEO.read()
-            if not ret:
-                # loop the video
-                MODULE6_VIDEO.set(cv.CAP_PROP_POS_FRAMES, 0)
-                MODULE6_FRAME_ID = 0
-                continue
+#         elif mode == "sam2":
+#             ret, frame = MODULE6_VIDEO.read()
+#             if not ret:
+#                 # loop the video
+#                 MODULE6_VIDEO.set(cv.CAP_PROP_POS_FRAMES, 0)
+#                 MODULE6_FRAME_ID = 0
+#                 continue
 
-            # apply SAM2 first for live preview
-            frame = sam2_tracker(frame, MODULE6_SAM2_MASKS, MODULE6_FRAME_ID)
-            MODULE6_FRAME_ID = (MODULE6_FRAME_ID + 1) % MODULE6_TOTAL_FRAMES
+#             # apply SAM2 first for live preview
+#             frame = sam2_tracker(frame, MODULE6_SAM2_MASKS, MODULE6_FRAME_ID)
+#             MODULE6_FRAME_ID = (MODULE6_FRAME_ID + 1) % MODULE6_TOTAL_FRAMES
 
-        else:
-            ret, frame = False, None
+#         else:
+#             ret, frame = False, None
 
-        if not ret or frame is None:
-            continue
+#         if not ret or frame is None:
+#             continue
 
-        # --- Apply trackers for webcam modes ---
-        if mode == "markerless":
-            frame = MODULE6_MARKERLESS.update(frame)
-        elif mode == "marker":
-            frame = marker_tracker(frame)
+#         # --- Apply trackers for webcam modes ---
+#         if mode == "markerless":
+#             frame = MODULE6_MARKERLESS.update(frame)
+#         elif mode == "marker":
+#             frame = marker_tracker(frame)
 
-        # --- Encode and yield MJPEG chunk ---
-        ok, buffer = cv.imencode(".jpg", frame)
-        if not ok:
-            continue
+#         # --- Encode and yield MJPEG chunk ---
+#         ok, buffer = cv.imencode(".jpg", frame)
+#         if not ok:
+#             continue
 
-        yield (
-            b"--frame\r\n"
-            b"Content-Type: image/jpeg\r\n\r\n"
-            + buffer.tobytes()
-            + b"\r\n"
-        )
+#         yield (
+#             b"--frame\r\n"
+#             b"Content-Type: image/jpeg\r\n\r\n"
+#             + buffer.tobytes()
+#             + b"\r\n"
+#         )
 
 
 def _module6_cleanup():
@@ -2258,13 +2258,13 @@ def module_6():
     return render_template("modules/module6.html", user=session.get("user"))
 
 
-@app.route("/module/6/video_feed")
-@login_required
-def module6_video_feed():
-    return Response(
-        module6_gen_frames(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
-    )
+# @app.route("/module/6/video_feed")
+# @login_required
+# def module6_video_feed():
+#     return Response(
+#         module6_gen_frames(),
+#         mimetype="multipart/x-mixed-replace; boundary=frame",
+#     )
 
 
 @app.route("/module/6/set_mode/<mode>")
@@ -2292,6 +2292,49 @@ def module6_set_mode(mode):
         MODULE6_VIDEO.set(cv.CAP_PROP_POS_FRAMES, 0)
 
     return "OK"
+
+@app.post("/module/6/process_frame/<mode>")
+@login_required
+def module6_process_frame(mode):
+    """
+    Process a single browser-webcam frame for Module 6.
+
+    URL:
+      /module/6/process_frame/marker
+      /module/6/process_frame/markerless
+
+    Form-data:
+      frame: JPEG/PNG image (the current webcam frame)
+
+    Returns:
+      Raw JPEG bytes with tracking overlay (no JSON).
+    """
+    if mode not in ("marker", "markerless"):
+        abort(400)
+
+    # Get uploaded frame from the browser
+    up = request.files.get("frame")
+    if not up or not up.filename:
+        return "no frame uploaded", 400
+
+    data = np.frombuffer(up.read(), np.uint8)
+    frame = cv.imdecode(data, cv.IMREAD_COLOR)
+    if frame is None:
+        return "could not decode frame", 400
+
+    # Apply the appropriate tracker
+    if mode == "marker":
+        out = marker_tracker(frame)
+    else:  # markerless
+        # reuse the global tracker so optical flow uses previous frame
+        global MODULE6_MARKERLESS
+        out = MODULE6_MARKERLESS.update(frame)
+
+    ok, buf = cv.imencode(".jpg", out, [cv.IMWRITE_JPEG_QUALITY, 80])
+    if not ok:
+        return "encode error", 500
+
+    return Response(buf.tobytes(), mimetype="image/jpeg")
 
 
 @app.route("/module/6/sam2_frame/<int:frame_id>")
