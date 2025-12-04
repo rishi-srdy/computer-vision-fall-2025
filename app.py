@@ -310,6 +310,7 @@ def video_feed():
     )
 
 
+
 # ============================
 # Face Registration APIs
 # ============================
@@ -319,18 +320,39 @@ def api_capture():
     """
     Capture one cropped face image for a given username.
 
+    New behaviour:
+      – Prefer an uploaded frame from the browser (field: 'frame').
+      – Fallback to server webcam via get_camera() (for local use).
+
     Expects form-data:
       - username
+      - frame (optional file; JPEG/PNG)
     Saves to: data/faces/<username>/img_XXXX.jpg
     """
     username = (request.form.get("username") or "").strip()
     if not username:
         return jsonify(ok=False, msg="username required"), 400
 
-    cam = get_camera()
-    ok, frame = cam.read()
-    if not ok:
-        return jsonify(ok=False, msg="camera read failed"), 500
+    frame = None
+
+    # 1) Try uploaded file from browser
+    up = request.files.get("frame")
+    if up and up.filename:
+        data = up.read()
+        arr = np.frombuffer(data, np.uint8)
+        frame = cv.imdecode(arr, cv.IMREAD_COLOR)
+        if frame is None:
+            return jsonify(ok=False, msg="could not decode uploaded image"), 400
+
+    # 2) Fallback: direct webcam (local dev only)
+    if frame is None:
+        try:
+            cam = get_camera()
+            ok, frame = cam.read()
+        except Exception:
+            ok, frame = False, None
+        if not ok or frame is None:
+            return jsonify(ok=False, msg="camera not available"), 500
 
     roi, _, _ = prepare_face_roi(frame)
     if roi is None:
@@ -399,8 +421,15 @@ def api_train():
 @app.post("/api/auth")
 def api_auth():
     """
-    Take one webcam frame, run LBPH prediction.
-    On success: set session['user'] and return redirect=/dashboard.
+    Authenticate user using a single face frame.
+
+    New behaviour:
+      – Prefer an uploaded frame from the browser (field: 'frame').
+      – Fallback to server webcam via get_camera() for local runs.
+
+    On success:
+      – sets session['user']
+      – returns JSON with redirect=/dashboard
     """
     model = ensure_model_trained()
     if model is None:
@@ -409,10 +438,26 @@ def api_auth():
     labels = load_labels()
     inv_labels = {v: k for k, v in labels.items()}
 
-    cam = get_camera()
-    ok, frame = cam.read()
-    if not ok:
-        return jsonify(ok=False, msg="camera read failed"), 500
+    frame = None
+
+    # 1) Try uploaded file
+    up = request.files.get("frame")
+    if up and up.filename:
+        data = up.read()
+        arr = np.frombuffer(data, np.uint8)
+        frame = cv.imdecode(arr, cv.IMREAD_COLOR)
+        if frame is None:
+            return jsonify(ok=False, msg="could not decode uploaded image"), 400
+
+    # 2) Fallback: webcam
+    if frame is None:
+        try:
+            cam = get_camera()
+            ok, frame = cam.read()
+        except Exception:
+            ok, frame = False, None
+        if not ok or frame is None:
+            return jsonify(ok=False, msg="camera not available"), 500
 
     roi, _, _ = prepare_face_roi(frame)
     if roi is None:
@@ -480,19 +525,46 @@ def m1_toggle():
 @login_required
 def m1_capture():
     """
-    ?mode=calib | img
-    Saves the current frame to:
+    Capture a frame for Module 1.
+
+    Query param:
+      ?mode=calib | img
+
+    New behaviour:
+      – Prefer an uploaded frame from the browser (field: 'frame').
+      – Fallback to server webcam via get_camera() (for local dev).
+
+    Saves:
       - calib/   → chessboard captures
       - captures → object images
+
+    Returns JSON:
+      { ok: bool, path: "relative/path/from/BASE_DIR" }
     """
     mode = (request.args.get("mode") or "").lower()
     if mode not in ("calib", "img"):
-        return jsonify(ok=False, error="invalid mode"), 400
+        return jsonify(ok=False, error="invalid mode (use calib|img)"), 400
 
-    cam = get_camera()
-    ok, frame = cam.read()
-    if not ok:
-        return jsonify(ok=False, error="camera read failed"), 500
+    frame = None
+
+    # 1) Try uploaded file from browser
+    up = request.files.get("frame")
+    if up and up.filename:
+        data = up.read()
+        arr = np.frombuffer(data, np.uint8)
+        frame = cv.imdecode(arr, cv.IMREAD_COLOR)
+        if frame is None:
+            return jsonify(ok=False, error="could not decode uploaded image"), 400
+
+    # 2) Fallback: direct webcam (local dev only)
+    if frame is None:
+        try:
+            cam = get_camera()
+            ok, frame = cam.read()
+        except Exception:
+            ok, frame = False, None
+        if not ok or frame is None:
+            return jsonify(ok=False, error="camera read failed"), 500
 
     ts = int(time.time() * 1000)
     out_path = (
@@ -2111,58 +2183,58 @@ MODULE6_FRAME_ID = 0
 MODULE6_TOTAL_FRAMES = MODULE6_SAM2_MASKS.shape[0]  # e.g. 199
 
 
-def module6_gen_frames():
-    """
-    Streaming generator for /module/6/video_feed
-    Uses the main webcam (get_camera) for marker/markerless,
-    and the pre-recorded video + SAM2 masks for 'sam2' mode.
-    """
-    global MODULE6_MODE, MODULE6_FRAME_ID, MODULE6_MARKERLESS
+# def module6_gen_frames():
+#     """
+#     Streaming generator for /module/6/video_feed
+#     Uses the main webcam (get_camera) for marker/markerless,
+#     and the pre-recorded video + SAM2 masks for 'sam2' mode.
+#     """
+#     global MODULE6_MODE, MODULE6_FRAME_ID, MODULE6_MARKERLESS
 
-    while True:
-        with MODULE6_MODE_LOCK:
-            mode = MODULE6_MODE
+#     while True:
+#         with MODULE6_MODE_LOCK:
+#             mode = MODULE6_MODE
 
-        # --- Choose source ---
-        if mode in ("marker", "markerless"):
-            cam = get_camera()
-            ret, frame = cam.read()
+#         # --- Choose source ---
+#         if mode in ("marker", "markerless"):
+#             cam = get_camera()
+#             ret, frame = cam.read()
 
-        elif mode == "sam2":
-            ret, frame = MODULE6_VIDEO.read()
-            if not ret:
-                # loop the video
-                MODULE6_VIDEO.set(cv.CAP_PROP_POS_FRAMES, 0)
-                MODULE6_FRAME_ID = 0
-                continue
+#         elif mode == "sam2":
+#             ret, frame = MODULE6_VIDEO.read()
+#             if not ret:
+#                 # loop the video
+#                 MODULE6_VIDEO.set(cv.CAP_PROP_POS_FRAMES, 0)
+#                 MODULE6_FRAME_ID = 0
+#                 continue
 
-            # apply SAM2 first for live preview
-            frame = sam2_tracker(frame, MODULE6_SAM2_MASKS, MODULE6_FRAME_ID)
-            MODULE6_FRAME_ID = (MODULE6_FRAME_ID + 1) % MODULE6_TOTAL_FRAMES
+#             # apply SAM2 first for live preview
+#             frame = sam2_tracker(frame, MODULE6_SAM2_MASKS, MODULE6_FRAME_ID)
+#             MODULE6_FRAME_ID = (MODULE6_FRAME_ID + 1) % MODULE6_TOTAL_FRAMES
 
-        else:
-            ret, frame = False, None
+#         else:
+#             ret, frame = False, None
 
-        if not ret or frame is None:
-            continue
+#         if not ret or frame is None:
+#             continue
 
-        # --- Apply trackers for webcam modes ---
-        if mode == "markerless":
-            frame = MODULE6_MARKERLESS.update(frame)
-        elif mode == "marker":
-            frame = marker_tracker(frame)
+#         # --- Apply trackers for webcam modes ---
+#         if mode == "markerless":
+#             frame = MODULE6_MARKERLESS.update(frame)
+#         elif mode == "marker":
+#             frame = marker_tracker(frame)
 
-        # --- Encode and yield MJPEG chunk ---
-        ok, buffer = cv.imencode(".jpg", frame)
-        if not ok:
-            continue
+#         # --- Encode and yield MJPEG chunk ---
+#         ok, buffer = cv.imencode(".jpg", frame)
+#         if not ok:
+#             continue
 
-        yield (
-            b"--frame\r\n"
-            b"Content-Type: image/jpeg\r\n\r\n"
-            + buffer.tobytes()
-            + b"\r\n"
-        )
+#         yield (
+#             b"--frame\r\n"
+#             b"Content-Type: image/jpeg\r\n\r\n"
+#             + buffer.tobytes()
+#             + b"\r\n"
+#         )
 
 
 def _module6_cleanup():
@@ -2186,13 +2258,13 @@ def module_6():
     return render_template("modules/module6.html", user=session.get("user"))
 
 
-@app.route("/module/6/video_feed")
-@login_required
-def module6_video_feed():
-    return Response(
-        module6_gen_frames(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
-    )
+# @app.route("/module/6/video_feed")
+# @login_required
+# def module6_video_feed():
+#     return Response(
+#         module6_gen_frames(),
+#         mimetype="multipart/x-mixed-replace; boundary=frame",
+#     )
 
 
 @app.route("/module/6/set_mode/<mode>")
@@ -2220,6 +2292,49 @@ def module6_set_mode(mode):
         MODULE6_VIDEO.set(cv.CAP_PROP_POS_FRAMES, 0)
 
     return "OK"
+
+@app.post("/module/6/process_frame/<mode>")
+@login_required
+def module6_process_frame(mode):
+    """
+    Process a single browser-webcam frame for Module 6.
+
+    URL:
+      /module/6/process_frame/marker
+      /module/6/process_frame/markerless
+
+    Form-data:
+      frame: JPEG/PNG image (the current webcam frame)
+
+    Returns:
+      Raw JPEG bytes with tracking overlay (no JSON).
+    """
+    if mode not in ("marker", "markerless"):
+        abort(400)
+
+    # Get uploaded frame from the browser
+    up = request.files.get("frame")
+    if not up or not up.filename:
+        return "no frame uploaded", 400
+
+    data = np.frombuffer(up.read(), np.uint8)
+    frame = cv.imdecode(data, cv.IMREAD_COLOR)
+    if frame is None:
+        return "could not decode frame", 400
+
+    # Apply the appropriate tracker
+    if mode == "marker":
+        out = marker_tracker(frame)
+    else:  # markerless
+        # reuse the global tracker so optical flow uses previous frame
+        global MODULE6_MARKERLESS
+        out = MODULE6_MARKERLESS.update(frame)
+
+    ok, buf = cv.imencode(".jpg", out, [cv.IMWRITE_JPEG_QUALITY, 80])
+    if not ok:
+        return "encode error", 500
+
+    return Response(buf.tobytes(), mimetype="image/jpeg")
 
 
 @app.route("/module/6/sam2_frame/<int:frame_id>")
@@ -2566,9 +2681,4 @@ def module7_task3_video_feed():
 # Run
 # ----------------------------
 if __name__ == "__main__":
-    # For local dev
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", "5000")),
-        debug=True,
-    )
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=True)
