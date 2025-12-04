@@ -181,6 +181,37 @@
   </div>
 </div>
 
+<!-- Measurements Table -->
+<section style="margin-top: 32px;">
+  <h3>📏 Recent Measurements</h3>
+  <p class="muted">Static placeholders – images from <code>static/table/*.jpg</code>, measurements to be filled later.</p>
+
+  {% set measurements = [85.64, 92.31, 82.77, 86.43, 68.94, 94.12, 83.52, 90.67, 71.38, 85.11] %}
+
+  <table style="border-collapse: collapse; width: 100%; text-align: center; margin-top: 12px;">
+    <thead>
+      <tr>
+        <th style="border: 1px solid #ddd; padding: 8px;">S.No</th>
+        <th style="border: 1px solid #ddd; padding: 8px;">Image</th>
+        <th style="border: 1px solid #ddd; padding: 8px;">Calculated measurement</th>
+      </tr>
+    </thead>
+    {% for val in measurements %}
+    <tr>
+      <td style="border: 1px solid #ddd; padding: 8px;">{{ loop.index }}</td>
+
+      <td style="border: 1px solid #ddd; padding: 8px;">
+        <img src="{{ url_for('static', filename='table/' ~ loop.index ~ '.jpg') }}" width="80">
+      </td>
+
+      <td style="border: 1px solid #ddd; padding: 8px;">
+        {{ val }}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+
 <div style="margin-top:20px; text-align:center;">
   <a href="{{ url_for('logout') }}" class="btn">Logout</a>
 </div>
