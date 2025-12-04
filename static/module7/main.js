@@ -1,5 +1,6 @@
 // ============================================
 // Utility: parse "x,y" lines into [[x,y], ...]
+// (used by Task 1 – Stereo measurement)
 // ============================================
 function m7_parsePoints(text) {
   const lines = text
@@ -24,9 +25,10 @@ function m7_parsePoints(text) {
 }
 
 // ============================================
-// DOM wiring (only if Task-1 elements exist)
+// Task 1 – Stereo size measurement
+// (runs only if Task-1 DOM elements exist)
 // ============================================
-document.addEventListener("DOMContentLoaded", () => {
+function initModule7Task1() {
   const leftImg = document.getElementById("m7-img-left");
   const rightImg = document.getElementById("m7-img-right");
   const overlayLeft = document.getElementById("m7-overlay-left");
@@ -177,4 +179,63 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+}
+
+// ============================================
+// Task 3 – Pose & Hand tracking live stream
+// (runs only if Task-3 DOM elements exist)
+// ============================================
+function initModule7Task3() {
+  const poseImg   = document.getElementById("poseStream");
+  const statusEl  = document.getElementById("m7t3Status");
+  const reloadBtn = document.getElementById("m7t3ReloadBtn");
+
+  // Not on Task 3 page → do nothing
+  if (!poseImg) {
+    return;
+  }
+
+  // Remember the base URL for the stream
+  const baseSrc = poseImg.getAttribute("data-base-src") || poseImg.src;
+
+  function reloadStream() {
+    const sep = baseSrc.includes("?") ? "&" : "?";
+    poseImg.src = baseSrc + sep + "t=" + Date.now();
+    if (statusEl) {
+      statusEl.textContent = "Reloading stream…";
+    }
+  }
+
+  if (reloadBtn) {
+    reloadBtn.addEventListener("click", () => {
+      reloadStream();
+    });
+  }
+
+  // When the stream starts successfully
+  poseImg.addEventListener("load", () => {
+    if (statusEl) {
+      statusEl.textContent =
+        "Stream running. Move in front of the camera to see pose & hand landmarks.";
+    }
+  });
+
+  // If something goes wrong
+  poseImg.addEventListener("error", () => {
+    if (statusEl) {
+      statusEl.textContent =
+        "Could not load stream. Check camera permissions/server logs, then click “Reload Stream”.";
+    }
+  });
+
+  // Kick off once with a cache-busted URL so revisits don't reuse a stale connection
+  reloadStream();
+}
+
+// ============================================
+// DOMContentLoaded – run whichever tasks exist
+// ============================================
+document.addEventListener("DOMContentLoaded", () => {
+  initModule7Task1();
+  initModule7Task3();
 });
